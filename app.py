@@ -1,15 +1,20 @@
 import streamlit as st
 import pandas as pd
-import speech_recognition as sr
-import pyttsx3
 from PIL import Image
 import pytesseract
 import PyPDF2
 import io
 import re
-import openai
 from io import BytesIO
 import numpy as np
+
+# Importaciones opcionales para voz (solo funcionan localmente)
+try:
+    import speech_recognition as sr
+    import pyttsx3
+    VOICE_AVAILABLE = True
+except ImportError:
+    VOICE_AVAILABLE = False
 
 # Configuración
 st.set_page_config(page_title="Cambio de Precios", layout="wide")
@@ -57,6 +62,9 @@ def process_uploaded_file(uploaded_file):
     return None
 
 def speech_to_text():
+    if not VOICE_AVAILABLE:
+        return "Voz no disponible en este entorno"
+    
     r = sr.Recognizer()
     with sr.Microphone() as source:
         st.write("Hablando...")
@@ -68,6 +76,9 @@ def speech_to_text():
         return "Error reconociendo voz"
 
 def text_to_speech(text):
+    if not VOICE_AVAILABLE:
+        return
+    
     engine = pyttsx3.init()
     engine.say(text)
     engine.runAndWait()
@@ -122,18 +133,21 @@ with col1:
     
     # Control por voz
     st.subheader("Control por Voz")
-    if st.button("🎤 Hablar"):
-        voice_command = speech_to_text()
-        st.write(f"Comando: {voice_command}")
-        
-        if st.session_state.df is not None:
-            code = process_price_command(voice_command, st.session_state.df)
-            try:
-                exec(code, {'df': st.session_state.df})
-                st.success("Comando ejecutado")
-                text_to_speech("Precios actualizados")
-            except Exception as e:
-                st.error(f"Error: {e}")
+    if VOICE_AVAILABLE:
+        if st.button("🎤 Hablar"):
+            voice_command = speech_to_text()
+            st.write(f"Comando: {voice_command}")
+            
+            if st.session_state.df is not None:
+                code = process_price_command(voice_command, st.session_state.df)
+                try:
+                    exec(code, {'df': st.session_state.df})
+                    st.success("Comando ejecutado")
+                    text_to_speech("Precios actualizados")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    else:
+        st.info("Control por voz no disponible en Streamlit Cloud")
 
 with col2:
     st.subheader("Chat de Comandos")
